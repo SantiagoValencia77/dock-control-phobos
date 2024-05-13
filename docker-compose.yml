@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  phobosback-llm:
+    build:
+      context: ./phobosback-llm
+    runtime: nvidia
+    devices:
+      - "/dev/nvidia*:/dev/nvidia*"
+    # Adjust healthcheck endpoint based on your LLM
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/<your_llm_health_endpoint>"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  phobos:
+    build:
+      context: ./phobos
+    ports:
+      - "5000:5000"
+    depends_on:
+      - phobosback-llm
+    # Replace with commands to start your Gradio app and access the LLM model
+    entrypoint: bash -c "source activate myenv && python app.py --llm_path /app/llm_model"  # Assuming LLM model downloaded within container
+    runtime: nvidia
+    devices:
+      - "/dev/nvidia*:/dev/nvidia*"
+    environment:
+      # Assuming Hugging Face Space environment variables for secrets
+      - HUGGINGFACE_AUTH_TOKEN=${HUGGINGFACE_AUTH_TOKEN}  # Replace with your actual secret environment variable name
+
+# **Explanation:**
+
+# - **LLM Service:** The `phobosback-llm` service configuration remains similar, ensuring CUDA access and proper healthcheck configuration (adjust the healthcheck endpoint).
+# - **Gradio App Service:** The `phobos` service has the following adjustments:
+#     - The entrypoint command assumes the LLM model is downloaded within the container during the build process. You might need to modify this based on your specific approach.
+#     - The environment variable assumes you have a secret environment variable named `HUGGINGFACE_AUTH_TOKEN` set within your Hugging Face Space for authentication (replace with the actual secret variable name).
+#     - The `source activate myenv` command assumes you have a virtual environment named `myenv` to activate (adjust if necessary).
+
+# **Additional Considerations:**
+
+# - **LLM Model Download (Optional):**  If you don't want to download the LLM model within the container, you might need to define a volume in the `docker-compose.yml` file to mount a directory containing the pre-downloaded model from your local machine.
+# - **Specific LLM Requirements:** Consult the documentation for your specific LLM in the `phobosback-llm` Space to identify any additional configuration needed within the container (e.g., mounting additional volumes, setting specific environment variables).
+# - **Gradio App Configuration (Optional):** If your Gradio app requires additional environment variables for configuration, you can add them to the `environment` section within the `phobos` service definition.
+
+# **Remember:**
+
+# - Replace placeholders with your actual commands, LLM healthcheck endpoint, secret environment variable names, and potential Gradio app configuration details.
+# - This is a general structure, and you might need to adjust it further based on the specifics of your LLM and Gradio app implementation.
+
+# By following these guidelines and customizing the provided `docker-compose.yml` file, you can create a configuration that utilizes CUDA for Hugging Face tasks, ensures proper startup order for your LLM and Gradio app, and manages secrets securely while referencing components from your Hugging Face Spaces.
